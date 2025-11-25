@@ -1,5 +1,7 @@
 # Prerequisites - GCP Setup
 
+> **🪟 Windows Users:** See **[WINDOWS-QUICKSTART.md](./WINDOWS-QUICKSTART.md)** for a complete Windows-specific quick start guide with PowerShell commands!
+
 ## What
 
 One-time setup of your Google Cloud Platform environment to run Helm charts on Google Kubernetes Engine (GKE). This includes creating a GCP project, enabling APIs, creating a GKE Autopilot cluster, setting up Artifact Registry for Helm charts, and configuring Workload Identity for secure pod-to-GCP authentication.
