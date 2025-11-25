@@ -1,0 +1,8 @@
+# Firestore
+google-cloud-firestore==2.14.0
+
+# Datastore
+google-cloud-datastore==2.19.0
+
+# Redis
+redis==5.0.1
