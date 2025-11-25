@@ -107,8 +107,23 @@ helmchartsgcp/
 
 ## How
 
+### Platform-Specific Guides
+
+#### 🪟 Windows Users
+**See [WINDOWS-DEPLOYMENT-GUIDE.md](./WINDOWS-DEPLOYMENT-GUIDE.md)** for complete Windows-specific instructions including:
+- Tool installation (gcloud CLI, kubectl, Helm, Python)
+- PowerShell scripts for all setup tasks
+- Windows-specific troubleshooting
+- Step-by-step deployment guide
+
+All scripts in `00-prereqs/` are available in both Bash (`.sh`) and PowerShell (`.ps1`) formats.
+
+#### 🐧 Linux/Mac Users
+Follow the quickstart below using Bash scripts.
+
 ### Quickstart (15 minutes)
 
+**Linux/Mac:**
 ```bash
 # 1. Clone repository
 git clone https://github.com/sunkaramallikarjuna369/helmchartsgcp.git
@@ -147,6 +162,36 @@ cd ../python-examples
 # 6. Clean up to avoid charges
 cd ../00-prereqs
 ./cleanup.sh
+```
+
+**Windows (PowerShell):**
+```powershell
+# 1. Clone repository
+git clone https://github.com/sunkaramallikarjuna369/helmchartsgcp.git
+cd helmchartsgcp
+
+# 2. Set up GCP environment
+cd 00-prereqs
+$env:PROJECT_ID = "your-gcp-project-id"
+$env:REGION = "us-central1"
+
+# Enable APIs
+.\enable-apis.ps1
+
+# Create GKE Autopilot cluster (takes 5-10 minutes)
+.\create-gke-autopilot.ps1
+
+# Set up Artifact Registry for Helm charts
+.\setup-artifact-registry.ps1
+
+# Configure Workload Identity
+.\setup-workload-identity.ps1
+
+# 3. Follow the detailed Windows guide
+# See WINDOWS-DEPLOYMENT-GUIDE.md for complete instructions
+
+# 4. Clean up to avoid charges
+.\cleanup.ps1
 ```
 
 ### Verify Setup
