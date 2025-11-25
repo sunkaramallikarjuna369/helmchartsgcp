@@ -1,6 +1,409 @@
 # Security - Best Practices for GKE
 
-Learn how to secure your applications and clusters on GKE.
+## What
+
+Comprehensive guide to securing applications and clusters on GKE, covering RBAC (Role-Based Access Control), Network Policies, Pod Security Standards, image scanning and signing, Workload Identity, and security best practices for production deployments.
+
+**Resources Created:**
+- ServiceAccount (pod identity)
+- Role/ClusterRole (permissions)
+- RoleBinding/ClusterRoleBinding (permission assignments)
+- NetworkPolicy (network segmentation)
+- Pod SecurityContext (container security)
+- Binary Authorization policies (image verification)
+- Workload Identity bindings (GCP service account access)
+
+## Why
+
+**Why Security Matters:**
+- **Protect Data**: Prevent unauthorized access to sensitive data
+- **Compliance**: Meet regulatory requirements (GDPR, HIPAA, SOC 2)
+- **Prevent Breaches**: Reduce attack surface and blast radius
+- **Trust**: Build customer confidence in your platform
+- **Cost Avoidance**: Security incidents are expensive
+- **Reputation**: Security breaches damage brand reputation
+
+**Why Use RBAC:**
+- **Least Privilege**: Grant only necessary permissions
+- **Audit Trail**: Track who can do what
+- **Separation of Duties**: Different roles for different teams
+- **Fine-Grained Control**: Control access at resource level
+- **Kubernetes Native**: Built into Kubernetes
+
+**Why Use Network Policies:**
+- **Defense in Depth**: Additional security layer beyond RBAC
+- **Microsegmentation**: Isolate workloads from each other
+- **Zero Trust**: Deny all by default, allow explicitly
+- **Compliance**: Required for many security frameworks
+- **Limit Blast Radius**: Contain compromised workloads
+
+**Why Use Workload Identity:**
+- **No Service Account Keys**: Eliminates key management and rotation
+- **Automatic Credential Rotation**: Google manages credentials
+- **Fine-Grained IAM**: Use GCP IAM for access control
+- **Audit Logging**: Track GCP resource access
+- **Best Practice**: Google-recommended authentication method
+
+**Trade-offs:**
+- **Complexity**: Security adds configuration overhead
+- **Learning Curve**: Understanding RBAC, Network Policies, Pod Security
+- **Debugging**: Security restrictions can make troubleshooting harder
+- **Performance**: Network Policies add slight overhead
+
+**Alternatives:**
+- **Service Mesh**: Istio/Linkerd for advanced security (more complex)
+- **OPA/Gatekeeper**: Policy enforcement (additional tool)
+- **Falco**: Runtime security monitoring (additional tool)
+
+## When
+
+**Implement Security When:**
+- Deploying to production (always!)
+- Handling sensitive data (PII, financial, health)
+- Multi-tenant environments
+- Need compliance certifications
+- Public-facing applications
+- High-value targets
+
+**Prerequisites:**
+- Completed 00-prereqs (GKE cluster with Workload Identity)
+- Understanding of Kubernetes resources (pods, services, deployments)
+- Basic understanding of networking concepts
+- Familiarity with IAM concepts
+
+**When to Use Each Security Control:**
+- **RBAC**: Always (control who can access what)
+- **Network Policies**: Always in production (network segmentation)
+- **Pod Security Standards**: Always (secure pod configurations)
+- **Workload Identity**: Always for GCP access (no service account keys)
+- **Image Scanning**: Always before deploying (find vulnerabilities)
+- **Binary Authorization**: Production (enforce only signed images)
+- **Read-Only Root Filesystem**: Always when possible (prevent tampering)
+- **Run as Non-Root**: Always (reduce privilege escalation risk)
+
+**When NOT to Use:**
+- Development environments (can relax some controls for convenience)
+- Proof of concepts (security can be added later)
+- Never skip: Workload Identity, basic RBAC, running as non-root
+
+**Learning Sequence:**
+1. **rbac**: Role-Based Access Control (25 minutes)
+2. **network-policies**: Network segmentation (25 minutes)
+3. **pod-security-standards**: Secure pod configurations (20 minutes)
+4. **image-signing-scanning**: Image security (20 minutes)
+**Total Time**: ~1.5 hours
+
+## Where
+
+**GCP Services:**
+- **Workload Identity**: Secure pod-to-GCP authentication
+- **Container Analysis API**: Image vulnerability scanning
+- **Binary Authorization**: Image signing and verification
+- **Cloud Logging**: Audit logs for security events
+- **IAM**: Access control for GCP resources
+
+**IAM Roles Required:**
+- `roles/container.developer`: Deploy workloads
+- `roles/iam.serviceAccountAdmin`: Create service accounts and bindings
+- `roles/containeranalysis.admin`: Enable vulnerability scanning
+- `roles/binaryauthorization.policyEditor`: Configure Binary Authorization
+
+**Kubernetes Resources:**
+- **Namespace**: Any namespace (default, production, etc.)
+- **ServiceAccount**: Pod identity (namespace-scoped)
+- **Role**: Permissions within namespace
+- **ClusterRole**: Cluster-wide permissions
+- **RoleBinding**: Bind Role to ServiceAccount
+- **ClusterRoleBinding**: Bind ClusterRole to ServiceAccount
+- **NetworkPolicy**: Network segmentation rules (namespace-scoped)
+- **Pod**: With securityContext for security settings
+
+**Repository Locations:**
+- `08-security/rbac/`: RBAC examples and patterns
+- `08-security/network-policies/`: Network Policy examples
+- `08-security/pod-security-standards/`: Secure pod configurations
+- `08-security/image-signing-scanning/`: Image security examples
+
+**Key Security Settings:**
+```yaml
+# Pod SecurityContext (always use)
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container SecurityContext (always use)
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop:
+    - ALL
+
+# Network Policy (start with deny-all)
+policyTypes:
+- Ingress
+- Egress
+```
+
+**Where Costs Accrue:**
+- **RBAC**: Free (built into Kubernetes)
+- **Network Policies**: Free (built into Kubernetes)
+- **Pod Security**: Free (built into Kubernetes)
+- **Workload Identity**: Free
+- **Container Analysis**: Free for vulnerability scanning
+- **Binary Authorization**: Free
+- **Cloud Logging**: 50 GB/month free, $0.50/GB after
+
+**Cost Example:**
+- All security features: $0/month (within free tiers)
+- Audit logging (within free tier): $0/month
+- **Total: $0/month**
+
+## How
+
+### Quickstart: RBAC
+
+```bash
+# 1. Create ServiceAccount
+kubectl create serviceaccount my-app-sa
+
+# 2. Create Role (namespace-scoped permissions)
+kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-reader
+  namespace: default
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get"]
+EOF
+
+# 3. Create RoleBinding
+kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-pods
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: my-app-sa
+  namespace: default
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+EOF
+
+# 4. Test permissions
+kubectl auth can-i list pods --as=system:serviceaccount:default:my-app-sa
+# Should show: yes
+kubectl auth can-i delete pods --as=system:serviceaccount:default:my-app-sa
+# Should show: no
+```
+
+### Quickstart: Network Policies
+
+```bash
+# 1. Create default deny-all policy
+kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: default
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+EOF
+
+# 2. Allow specific traffic (frontend to backend)
+kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-to-backend
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: frontend
+    ports:
+    - protocol: TCP
+      port: 8080
+EOF
+
+# 3. Allow DNS (required for most apps)
+kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: default
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+EOF
+```
+
+### Quickstart: Secure Pod
+
+```bash
+# Deploy pod with security best practices
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-app
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: app
+    image: nginx:1.21
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      runAsUser: 1000
+      capabilities:
+        drop:
+        - ALL
+    volumeMounts:
+    - name: tmp
+      mountPath: /tmp
+    - name: cache
+      mountPath: /var/cache/nginx
+    - name: run
+      mountPath: /var/run
+  volumes:
+  - name: tmp
+    emptyDir: {}
+  - name: cache
+    emptyDir: {}
+  - name: run
+    emptyDir: {}
+EOF
+```
+
+### Quickstart: Workload Identity
+
+```bash
+# 1. Create GCP service account
+gcloud iam service-accounts create my-app-sa \
+  --display-name="My App Service Account"
+
+# 2. Grant GCP permissions
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:my-app-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/cloudsql.client"
+
+# 3. Create Kubernetes service account
+kubectl create serviceaccount my-app-ksa
+
+# 4. Bind GCP SA to K8s SA
+gcloud iam service-accounts add-iam-policy-binding \
+  my-app-sa@${PROJECT_ID}.iam.gserviceaccount.com \
+  --role roles/iam.workloadIdentityUser \
+  --member "serviceAccount:${PROJECT_ID}.svc.id.goog[default/my-app-ksa]"
+
+# 5. Annotate K8s SA
+kubectl annotate serviceaccount my-app-ksa \
+  iam.gke.io/gcp-service-account=my-app-sa@${PROJECT_ID}.iam.gserviceaccount.com
+
+# 6. Use in pod
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: workload-identity-test
+spec:
+  serviceAccountName: my-app-ksa
+  containers:
+  - name: app
+    image: google/cloud-sdk:slim
+    command: ["sleep", "3600"]
+EOF
+
+# 7. Test Workload Identity
+kubectl exec workload-identity-test -- gcloud auth list
+# Should show: my-app-sa@PROJECT_ID.iam.gserviceaccount.com
+```
+
+### Verify
+
+```bash
+# Check RBAC
+kubectl get serviceaccount my-app-sa
+kubectl get role pod-reader
+kubectl get rolebinding read-pods
+kubectl auth can-i list pods --as=system:serviceaccount:default:my-app-sa
+
+# Check Network Policies
+kubectl get networkpolicy
+kubectl describe networkpolicy default-deny-all
+
+# Check Pod Security
+kubectl get pod secure-app
+kubectl describe pod secure-app | grep -A 10 "Security Context"
+
+# Check Workload Identity
+kubectl get sa my-app-ksa -o yaml | grep iam.gke.io
+kubectl exec workload-identity-test -- gcloud auth list
+
+# Check for security issues
+kubectl get pods -o json | jq '.items[] | select(.spec.securityContext.runAsNonRoot != true) | .metadata.name'
+```
+
+### Cleanup
+
+```bash
+# Delete RBAC resources
+kubectl delete serviceaccount my-app-sa
+kubectl delete role pod-reader
+kubectl delete rolebinding read-pods
+
+# Delete Network Policies
+kubectl delete networkpolicy default-deny-all allow-frontend-to-backend allow-dns
+
+# Delete pods
+kubectl delete pod secure-app workload-identity-test
+
+# Delete GCP service account
+gcloud iam service-accounts delete my-app-sa@${PROJECT_ID}.iam.gserviceaccount.com --quiet
+```
 
 ## Overview
 
