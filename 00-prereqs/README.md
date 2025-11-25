@@ -125,6 +125,249 @@ export HELM_REGISTRY="${REGION}-docker.pkg.dev/${PROJECT_ID}/helm-charts"
 
 ## How
 
+### 📋 Step-by-Step Deployment Guide
+
+This section provides a clear, sequential list of steps to deploy all services. Follow these steps in order.
+
+#### For Linux/Mac Users
+
+**Step 1: Install Required Tools (5 minutes)**
+```bash
+# Install gcloud CLI
+curl https://sdk.cloud.google.com | bash
+exec -l $SHELL
+
+# Install kubectl
+gcloud components install kubectl
+
+# Install Helm
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+# Verify installations
+gcloud version
+kubectl version --client
+helm version
+```
+
+**Step 2: Set Up GCP Project (5 minutes)**
+```bash
+# Set your project ID (change this to your desired project ID)
+export PROJECT_ID="my-helm-gcp-project"
+export REGION="us-central1"
+export ZONE="us-central1-a"
+export CLUSTER_NAME="helm-learning-cluster"
+
+# Create project (if new)
+gcloud projects create $PROJECT_ID --name="Helm GCP Learning"
+
+# Set as default project
+gcloud config set project $PROJECT_ID
+gcloud config set compute/region $REGION
+gcloud config set compute/zone $ZONE
+
+# Link billing account (required)
+gcloud billing accounts list
+# Copy the ACCOUNT_ID from the output above
+gcloud billing projects link $PROJECT_ID --billing-account=ACCOUNT_ID
+```
+
+**Step 3: Enable Required APIs (2 minutes)**
+```bash
+cd 00-prereqs
+./enable-apis.sh
+```
+
+**Step 4: Create GKE Autopilot Cluster (10-15 minutes)**
+```bash
+./create-gke-autopilot.sh
+# This will take 10-15 minutes to complete
+# Wait for the cluster to be created
+```
+
+**Step 5: Set Up Artifact Registry (2 minutes)**
+```bash
+./artifact-registry-helm.sh
+```
+
+**Step 6: Configure Workload Identity (5 minutes)**
+```bash
+./workload-identity.sh
+```
+
+**Step 7: Verify Setup (2 minutes)**
+```bash
+# Check cluster is running
+kubectl get nodes
+
+# Check Helm
+helm version
+
+# Check Workload Identity
+kubectl get serviceaccount -n default
+kubectl describe serviceaccount default -n default
+
+# Check Artifact Registry
+gcloud artifacts repositories list
+```
+
+**Step 8: Save Environment Variables (1 minute)**
+```bash
+# Add to your shell profile for persistence
+cat >> ~/.bashrc <<EOF
+export PROJECT_ID="$PROJECT_ID"
+export REGION="$REGION"
+export ZONE="$ZONE"
+export CLUSTER_NAME="$CLUSTER_NAME"
+export HELM_REGISTRY="${REGION}-docker.pkg.dev/${PROJECT_ID}/helm-charts"
+EOF
+
+source ~/.bashrc
+```
+
+**✅ Setup Complete! Total Time: ~30-40 minutes**
+
+---
+
+#### For Windows Users (PowerShell)
+
+**Step 1: Install Required Tools (15 minutes)**
+
+1. **Install Google Cloud SDK**
+   - Download from: https://cloud.google.com/sdk/docs/install#windows
+   - Run `GoogleCloudSDKInstaller.exe`
+   - Follow installation wizard
+   - Check "Start Cloud SDK Shell" at the end
+
+2. **Install kubectl**
+   ```powershell
+   gcloud components install kubectl
+   ```
+
+3. **Install Helm**
+   - Option A (Chocolatey - Recommended):
+     ```powershell
+     # Install Chocolatey first (run as Administrator)
+     Set-ExecutionPolicy Bypass -Scope Process -Force
+     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+     iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+     
+     # Install Helm
+     choco install kubernetes-helm
+     ```
+   - Option B (Manual):
+     - Download from: https://github.com/helm/helm/releases
+     - Extract and add to PATH
+
+4. **Verify installations**
+   ```powershell
+   gcloud version
+   kubectl version --client
+   helm version
+   ```
+
+**Step 2: Set Up GCP Project (5 minutes)**
+```powershell
+# Set your project ID (change this to your desired project ID)
+$env:PROJECT_ID = "my-helm-gcp-project"
+$env:REGION = "us-central1"
+$env:ZONE = "us-central1-a"
+
+# Create project (if new)
+gcloud projects create $env:PROJECT_ID --name="Helm GCP Learning"
+
+# Set as default project
+gcloud config set project $env:PROJECT_ID
+gcloud config set compute/region $env:REGION
+gcloud config set compute/zone $env:ZONE
+
+# Link billing account (required)
+gcloud billing accounts list
+# Copy the ACCOUNT_ID from the output above
+gcloud billing projects link $env:PROJECT_ID --billing-account=ACCOUNT_ID
+```
+
+**Step 3: Enable Required APIs (2 minutes)**
+```powershell
+cd 00-prereqs
+.\enable-apis.ps1
+```
+
+**Step 4: Create GKE Autopilot Cluster (10-15 minutes)**
+```powershell
+.\create-gke-autopilot.ps1
+# This will take 10-15 minutes to complete
+# Wait for the cluster to be created
+```
+
+**Step 5: Set Up Artifact Registry (2 minutes)**
+```powershell
+.\setup-artifact-registry.ps1
+```
+
+**Step 6: Configure Workload Identity (5 minutes)**
+```powershell
+.\setup-workload-identity.ps1
+```
+
+**Step 7: Verify Setup (2 minutes)**
+```powershell
+# Check cluster is running
+kubectl get nodes
+
+# Check Helm
+helm version
+
+# Check Workload Identity
+kubectl get serviceaccount -n default
+kubectl describe serviceaccount default -n default
+
+# Check Artifact Registry
+gcloud artifacts repositories list
+```
+
+**Step 8: Save Environment Variables (1 minute)**
+```powershell
+# Add to your PowerShell profile for persistence
+notepad $PROFILE
+# Add these lines to the file:
+$env:PROJECT_ID = "my-helm-gcp-project"
+$env:REGION = "us-central1"
+$env:ZONE = "us-central1-a"
+$env:CLUSTER_NAME = "helm-learning-cluster"
+```
+
+**✅ Setup Complete! Total Time: ~35-45 minutes**
+
+---
+
+### 🗑️ Cleanup Steps (IMPORTANT - Run when done)
+
+#### Linux/Mac
+```bash
+cd 00-prereqs
+./cleanup.sh
+
+# Verify all resources deleted
+gcloud container clusters list
+gcloud artifacts repositories list
+gcloud compute forwarding-rules list
+gcloud sql instances list
+```
+
+#### Windows
+```powershell
+cd 00-prereqs
+.\cleanup.ps1
+
+# Verify all resources deleted
+gcloud container clusters list
+gcloud artifacts repositories list
+gcloud compute forwarding-rules list
+gcloud sql instances list
+```
+
+---
+
 ### Quickstart (30-40 minutes)
 
 ```bash
