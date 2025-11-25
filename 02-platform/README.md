@@ -1,6 +1,324 @@
 # Platform Patterns - Production-Ready Kubernetes
 
-Learn essential platform patterns for running production-grade applications on GKE.
+## What
+
+Essential platform patterns for running production-grade applications on GKE, covering resource management (namespaces, quotas, limits), high availability (probes, HPA, PDB, priority classes), scheduling and placement (affinity, topology spread), and deployment strategies (rolling updates, rollback).
+
+**Resources Created:**
+- Namespace (logical isolation)
+- ResourceQuota (limit resource consumption)
+- LimitRange (default and max/min limits)
+- HorizontalPodAutoscaler (automatic scaling)
+- PodDisruptionBudget (availability during disruptions)
+- PriorityClass (scheduling priority)
+- Affinity/anti-affinity rules (pod placement)
+- Topology spread constraints (even distribution)
+
+## Why
+
+**Why Platform Patterns Matter:**
+- **High Availability**: Ensure applications survive node failures and disruptions
+- **Resource Efficiency**: Optimize cluster resource usage and costs
+- **Scalability**: Handle variable load automatically with HPA
+- **Reliability**: Prevent cascading failures with proper limits and quotas
+- **Production Readiness**: Meet enterprise SLAs and uptime requirements
+- **Operational Excellence**: Reduce manual intervention and toil
+
+**Why Learn These Patterns:**
+- **Foundation**: Required for production deployments
+- **Cost Control**: Prevent resource waste and runaway costs
+- **Stability**: Avoid outages from resource exhaustion
+- **Career**: Essential knowledge for platform engineers
+- **Best Practices**: Industry-standard patterns used by all major companies
+
+**Trade-offs:**
+- **Complexity**: More configuration than simple deployments
+- **Learning Curve**: Understanding probes, HPA, PDB, affinity requires time
+- **Overhead**: Additional resources for multiple replicas and autoscaling
+- **Debugging**: More moving parts can make troubleshooting harder
+
+**Alternatives:**
+- **Simple Deployments**: Single replica, no probes (only for dev/test)
+- **Manual Scaling**: Scale replicas manually instead of HPA
+- **Cluster Autoscaler**: Scale nodes instead of pods (complementary)
+
+## When
+
+**Use Platform Patterns When:**
+- Deploying to production environments
+- Need high availability (99.9%+ uptime)
+- Handling variable traffic loads
+- Running business-critical applications
+- Managing multi-tenant clusters
+- Need to enforce resource limits per team/environment
+
+**Prerequisites:**
+- Completed 00-prereqs (GKE cluster setup)
+- Completed 01-helm-basics (understand Helm charts)
+- Basic Kubernetes knowledge (pods, deployments, services)
+- Understanding of resource requests and limits
+
+**When to Use Each Pattern:**
+- **Namespaces**: Always (organize resources by team/environment)
+- **Resource Quotas**: Multi-tenant clusters, cost control
+- **Limit Ranges**: Prevent resource hogging, set defaults
+- **Probes**: Always in production (liveness, readiness, startup)
+- **HPA**: Variable load, traffic spikes
+- **PDB**: Always in production (ensure availability)
+- **Priority Classes**: Critical vs non-critical workloads
+- **Affinity/Anti-Affinity**: HA, co-location, or separation requirements
+- **Topology Spread**: Multi-zone deployments, even distribution
+- **Rolling Updates**: Always (zero-downtime deployments)
+
+**When NOT to Use:**
+- Development/test environments (can use simpler patterns)
+- Single-replica applications (some patterns don't apply)
+- Stateless batch jobs (different patterns needed)
+
+**Learning Sequence:**
+1. **namespaces-quotas-limits**: Resource management (20 minutes)
+2. **probes-hpa-pdb-priority**: High availability (30 minutes)
+3. **scheduling-affinity-spread**: Pod placement (25 minutes)
+4. **rollout-strategies**: Safe deployments (15 minutes)
+**Total Time**: ~1.5 hours
+
+## Where
+
+**GCP Services:**
+- **GKE**: All patterns run on Kubernetes
+- **Cloud Monitoring**: Metrics for HPA (CPU, memory)
+- No additional GCP services required
+
+**IAM Roles Required:**
+- `roles/container.developer`: Deploy workloads
+- No additional IAM roles needed
+
+**Kubernetes Resources:**
+- **Namespace**: Cluster-scoped (organize resources)
+- **ResourceQuota**: Namespace-scoped (limit resources)
+- **LimitRange**: Namespace-scoped (default limits)
+- **HorizontalPodAutoscaler**: Namespace-scoped (autoscaling)
+- **PodDisruptionBudget**: Namespace-scoped (availability)
+- **PriorityClass**: Cluster-scoped (scheduling priority)
+- **Deployment**: Namespace-scoped (with affinity, probes, strategy)
+
+**Repository Locations:**
+- `02-platform/namespaces-quotas-limits/`: Resource management examples
+- `02-platform/probes-hpa-pdb-priority/`: HA patterns
+- `02-platform/scheduling-affinity-spread/`: Pod placement examples
+- `02-platform/rollout-strategies/`: Deployment strategy examples
+
+**Key Values to Set:**
+```yaml
+# Resource requests and limits (REQUIRED in Autopilot)
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# Probes
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+
+# HPA
+minReplicas: 2
+maxReplicas: 10
+targetCPUUtilizationPercentage: 70
+
+# PDB
+minAvailable: 1  # or maxUnavailable: 1
+
+# Anti-affinity
+podAntiAffinity:
+  preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        topologyKey: kubernetes.io/hostname
+```
+
+**Where Costs Accrue:**
+- **Multiple Replicas**: More pods = more CPU/memory costs
+- **HPA**: Scales up pods during high load
+- **Resource Requests**: Autopilot charges based on requests
+- **Over-provisioning**: Setting limits too high wastes money
+
+**Cost Example:**
+- 1 pod (250m CPU, 512Mi RAM): ~$0.03/hour = ~$22/month
+- 3 pods (HA): ~$0.09/hour = ~$66/month
+- HPA scaling to 10 pods: ~$0.30/hour = ~$220/month (during peak)
+
+## How
+
+### Quickstart: Production-Ready Deployment
+
+```bash
+# 1. Create namespace with quotas
+kubectl create namespace production
+
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: production
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    pods: "50"
+EOF
+
+# 2. Create deployment with all patterns
+kubectl apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: my-app
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: app
+        image: nginx:1.21
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+EOF
+
+# 3. Create HPA
+kubectl apply -f - <<EOF
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-app-hpa
+  namespace: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+EOF
+
+# 4. Create PDB
+kubectl apply -f - <<EOF
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: my-app-pdb
+  namespace: production
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: my-app
+EOF
+```
+
+### Verify
+
+```bash
+# Check namespace and quotas
+kubectl get namespace production
+kubectl describe resourcequota compute-quota -n production
+
+# Check deployment
+kubectl get deployment my-app -n production
+kubectl get pods -n production -l app=my-app
+
+# Check pod distribution (should be on different nodes)
+kubectl get pods -n production -l app=my-app -o wide
+
+# Check HPA
+kubectl get hpa my-app-hpa -n production
+kubectl describe hpa my-app-hpa -n production
+
+# Check PDB
+kubectl get pdb my-app-pdb -n production
+kubectl describe pdb my-app-pdb -n production
+
+# Check probes
+kubectl describe pod -n production -l app=my-app | grep -A 10 "Liveness\|Readiness"
+
+# Test rolling update
+kubectl set image deployment/my-app app=nginx:1.22 -n production
+kubectl rollout status deployment/my-app -n production
+```
+
+### Cleanup
+
+```bash
+# Delete all resources
+kubectl delete deployment my-app -n production
+kubectl delete hpa my-app-hpa -n production
+kubectl delete pdb my-app-pdb -n production
+
+# Delete namespace (deletes everything in it)
+kubectl delete namespace production
+
+# Verify cleanup
+kubectl get all -n production
+# Should show: No resources found
+```
 
 ## Overview
 

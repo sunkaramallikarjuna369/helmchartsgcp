@@ -1,6 +1,301 @@
 # Configuration and Secrets Management
 
-Learn how to manage application configuration and secrets securely on GKE.
+## What
+
+Comprehensive guide to managing application configuration and secrets securely on GKE, covering ConfigMaps for non-sensitive data, Kubernetes Secrets for sensitive data, and Secret Manager CSI driver for GCP-managed secrets with Workload Identity.
+
+**Resources Created:**
+- ConfigMap (non-sensitive configuration)
+- Secret (sensitive data, base64 encoded)
+- SecretProviderClass (Secret Manager CSI driver)
+- ServiceAccount with Workload Identity annotations
+- GCP Secret Manager secrets
+
+## Why
+
+**Why Configuration Management Matters:**
+- **Separation of Concerns**: Decouple configuration from application code
+- **Environment Flexibility**: Same image, different configs for dev/staging/prod
+- **Security**: Protect sensitive data (passwords, API keys, certificates)
+- **Auditability**: Track configuration changes and secret access
+- **Compliance**: Meet security and regulatory requirements
+- **Operational Excellence**: Change configuration without rebuilding images
+
+**Why Use Secret Manager CSI:**
+- **Centralized Management**: One place for all secrets across clusters
+- **Encryption at Rest**: Google-managed encryption keys
+- **Access Control**: IAM-based permissions, not just RBAC
+- **Audit Logging**: Track who accessed which secrets when
+- **Automatic Rotation**: Support for secret rotation policies
+- **No Service Account Keys**: Uses Workload Identity (more secure)
+
+**Trade-offs:**
+- **Complexity**: Secret Manager CSI is more complex than Kubernetes Secrets
+- **Latency**: CSI driver adds slight overhead vs in-cluster secrets
+- **Cost**: Secret Manager has minimal cost ($0.06 per 10K operations)
+- **Learning Curve**: Understanding CSI, Workload Identity, IAM
+
+**Alternatives:**
+- **Environment Variables**: Simple but not secure for secrets
+- **Kubernetes Secrets**: Built-in but base64 only (not encrypted)
+- **Sealed Secrets**: Encrypt secrets in git (bitnami-labs/sealed-secrets)
+- **SOPS**: Encrypt secrets with KMS (mozilla/sops)
+- **External Secrets Operator**: Sync from various secret stores
+
+## When
+
+**Use ConfigMaps When:**
+- Storing non-sensitive configuration (database host, port, log level)
+- Application settings that vary by environment
+- Configuration files (nginx.conf, application.yaml)
+- Feature flags and toggles
+
+**Use Kubernetes Secrets When:**
+- Development and testing environments
+- Simple secrets that don't need centralized management
+- TLS certificates for Ingress
+- Quick prototyping
+
+**Use Secret Manager CSI When:**
+- Production environments
+- Secrets shared across multiple clusters
+- Need audit logging and compliance
+- Secrets requiring rotation policies
+- Want centralized secret management
+
+**Prerequisites:**
+- Completed 00-prereqs (GKE cluster, Workload Identity setup)
+- Secret Manager API enabled
+- GCP service account with secretmanager.secretAccessor role
+- Kubernetes service account with Workload Identity annotation
+
+**When NOT to Use:**
+- Public configuration (use ConfigMaps)
+- Hardcoded values in images (bad practice)
+- Secrets in git (never!)
+
+**Learning Sequence:**
+1. **ConfigMaps**: Non-sensitive configuration (15 minutes)
+2. **Kubernetes Secrets**: Basic secret management (15 minutes)
+3. **Secret Manager CSI**: Production secrets (30 minutes)
+**Total Time**: ~1 hour
+
+## Where
+
+**GCP Services:**
+- **Secret Manager**: Centralized secrets storage
+- **IAM**: Access control for secrets
+- **Cloud Logging**: Audit logs for secret access
+- **Workload Identity**: Secure pod-to-GCP authentication
+
+**IAM Roles Required:**
+- `roles/secretmanager.admin`: Create and manage secrets (setup)
+- `roles/secretmanager.secretAccessor`: Read secret values (runtime)
+- `roles/iam.workloadIdentityUser`: Bind KSA to GSA
+
+**Kubernetes Resources:**
+- **Namespace**: Any namespace (default, production, etc.)
+- **ConfigMap**: Namespace-scoped (non-sensitive config)
+- **Secret**: Namespace-scoped (sensitive data)
+- **SecretProviderClass**: Namespace-scoped (CSI driver config)
+- **ServiceAccount**: Namespace-scoped (with Workload Identity)
+
+**Repository Locations:**
+- `03-config-and-secrets/configmaps/`: ConfigMap examples
+- `03-config-and-secrets/kubernetes-secrets/`: Kubernetes Secret examples
+- `03-config-and-secrets/secretmanager-csi/`: Secret Manager CSI examples
+
+**Key Values to Set:**
+```yaml
+# ConfigMap
+config:
+  db_host: postgresql.default.svc.cluster.local
+  db_port: "5432"
+  log_level: info
+
+# Kubernetes Secret
+secret:
+  db_password: ""  # Set via --set or separate file
+  api_key: ""
+
+# Secret Manager CSI
+secretManager:
+  enabled: true
+  projectId: my-project-id
+  secrets:
+    - name: db-password
+      path: db_password
+```
+
+**Where Costs Accrue:**
+- **Secret Manager**: $0.06 per 10,000 operations (minimal)
+- **Storage**: $0.06 per secret version per month (minimal)
+- **ConfigMaps/Secrets**: Free (stored in etcd)
+
+**Cost Example:**
+- 10 secrets with 1 version each: ~$0.60/month
+- 100K secret accesses: ~$0.60
+- Total: ~$1.20/month (negligible)
+
+## How
+
+### Quickstart: ConfigMap
+
+```bash
+# Create ConfigMap from literals
+kubectl create configmap app-config \
+  --from-literal=db_host=postgresql.default.svc.cluster.local \
+  --from-literal=db_port=5432 \
+  --from-literal=log_level=info
+
+# Use in pod
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app
+spec:
+  containers:
+  - name: app
+    image: nginx:1.21
+    env:
+    - name: DB_HOST
+      valueFrom:
+        configMapKeyRef:
+          name: app-config
+          key: db_host
+    - name: DB_PORT
+      valueFrom:
+        configMapKeyRef:
+          name: app-config
+          key: db_port
+EOF
+
+# Verify
+kubectl exec app -- env | grep DB_
+```
+
+### Quickstart: Kubernetes Secret
+
+```bash
+# Create Secret
+kubectl create secret generic app-secret \
+  --from-literal=db_password=mypassword \
+  --from-literal=api_key=myapikey
+
+# Use in pod
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-with-secret
+spec:
+  containers:
+  - name: app
+    image: nginx:1.21
+    env:
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: app-secret
+          key: db_password
+EOF
+
+# Verify (secret is set but not displayed)
+kubectl exec app-with-secret -- env | grep DB_PASSWORD
+```
+
+### Quickstart: Secret Manager CSI
+
+```bash
+# 1. Create secret in Secret Manager
+echo -n "mypassword" | gcloud secrets create db-password --data-file=-
+
+# 2. Grant access to GSA
+gcloud secrets add-iam-policy-binding db-password \
+  --member="serviceAccount:my-app-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
+# 3. Create SecretProviderClass
+kubectl apply -f - <<EOF
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: app-secrets
+spec:
+  provider: gcp
+  parameters:
+    secrets: |
+      - resourceName: "projects/${PROJECT_ID}/secrets/db-password/versions/latest"
+        path: "db_password"
+EOF
+
+# 4. Use in pod with Workload Identity
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-with-sm
+spec:
+  serviceAccountName: my-app-ksa  # Must have Workload Identity
+  containers:
+  - name: app
+    image: nginx:1.21
+    volumeMounts:
+    - name: secrets
+      mountPath: /var/secrets
+      readOnly: true
+  volumes:
+  - name: secrets
+    csi:
+      driver: secrets-store.csi.k8s.io
+      readOnly: true
+      volumeAttributes:
+        secretProviderClass: app-secrets
+EOF
+
+# 5. Verify
+kubectl exec app-with-sm -- cat /var/secrets/db_password
+```
+
+### Verify
+
+```bash
+# Check ConfigMap
+kubectl get configmap app-config
+kubectl describe configmap app-config
+
+# Check Secret
+kubectl get secret app-secret
+kubectl describe secret app-secret
+
+# Check SecretProviderClass
+kubectl get secretproviderclass app-secrets
+kubectl describe secretproviderclass app-secrets
+
+# Check pod is using secrets
+kubectl describe pod app-with-sm
+
+# Check Workload Identity
+kubectl get sa my-app-ksa -o yaml | grep iam.gke.io
+```
+
+### Cleanup
+
+```bash
+# Delete pods
+kubectl delete pod app app-with-secret app-with-sm
+
+# Delete ConfigMap and Secret
+kubectl delete configmap app-config
+kubectl delete secret app-secret
+
+# Delete SecretProviderClass
+kubectl delete secretproviderclass app-secrets
+
+# Delete GCP secret (optional)
+gcloud secrets delete db-password --quiet
+```
 
 ## Overview
 

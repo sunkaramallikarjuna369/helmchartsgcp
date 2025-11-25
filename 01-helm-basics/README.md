@@ -1,6 +1,200 @@
 # Helm Basics
 
-Learn the fundamentals of Helm charts and how to create, package, and deploy them on GKE.
+## What
+
+Comprehensive guide to Helm fundamentals covering chart structure, templating with Go templates, dependencies, packaging for OCI registries (Artifact Registry), and testing/validation. This section teaches you how to create, customize, package, and deploy Helm charts on GKE.
+
+**What You'll Learn:**
+- Chart structure (Chart.yaml, values.yaml, templates/, _helpers.tpl, NOTES.txt)
+- Go template syntax and built-in objects (.Values, .Release, .Chart)
+- Template functions, pipelines, and control structures
+- Chart dependencies and subcharts
+- Packaging and publishing to Artifact Registry (OCI format)
+- Testing with helm lint, helm template, and values.schema.json
+
+## Why
+
+**Why Helm Matters:**
+- **Templating**: Parameterize Kubernetes manifests for reusability across environments
+- **Versioning**: Track application versions and rollback easily
+- **Packaging**: Bundle related Kubernetes resources into a single deployable unit
+- **Ecosystem**: Leverage thousands of community charts (Bitnami, stable, etc.)
+- **Enterprise Adoption**: Industry standard for Kubernetes application deployment
+- **Consistency**: Ensure deployments are reproducible and consistent
+
+**Why Learn Helm Basics:**
+- **Foundation**: All other sections use Helm charts
+- **Customization**: Understand how to modify charts for your needs
+- **Troubleshooting**: Debug template rendering issues
+- **Best Practices**: Learn patterns used in production charts
+- **Career**: Helm is a required skill for Kubernetes roles
+
+**Trade-offs:**
+- **Learning Curve**: Go template syntax and Helm concepts require learning
+- **Complexity**: More complex than raw kubectl for simple deployments
+- **Debugging**: Template errors can be cryptic
+- **Overhead**: Additional abstraction layer over Kubernetes
+
+**Alternatives:**
+- **kubectl + kustomize**: Simpler, no templating, but less flexible
+- **Raw YAML**: Direct control, but no parameterization
+- **Operators**: More complex, but better for stateful applications
+- **CI/CD templating**: Use CI/CD variables instead of Helm
+
+## When
+
+**Learn Helm Basics When:**
+- Starting with Helm for the first time
+- Need to customize existing Helm charts
+- Want to create reusable Kubernetes deployments
+- Working with multi-environment deployments (dev/staging/prod)
+- Need to package and share applications
+
+**Prerequisites:**
+- Completed 00-prereqs (GKE cluster setup)
+- Basic Kubernetes knowledge (pods, deployments, services)
+- Basic YAML syntax
+- Basic command-line skills
+
+**When to Use Helm:**
+- Deploying applications with multiple Kubernetes resources
+- Need to parameterize configurations for different environments
+- Want to version and rollback deployments
+- Sharing applications with others
+- Managing complex dependencies
+
+**When NOT to Use Helm:**
+- Very simple single-resource deployments (use kubectl)
+- Learning Kubernetes basics (learn kubectl first)
+- Need advanced lifecycle management (consider Operators)
+- Team unfamiliar with Go templates (consider kustomize)
+
+**Learning Sequence:**
+1. **chart-skeleton**: Understand chart structure (15 minutes)
+2. **templating-fundamentals**: Learn Go template syntax (30 minutes)
+3. **dependencies**: Manage subcharts (20 minutes)
+4. **packaging-and-oci**: Publish to Artifact Registry (20 minutes)
+5. **testing-and-lint**: Validate charts (15 minutes)
+**Total Time**: ~2 hours
+
+## Where
+
+**GCP Services:**
+- **Artifact Registry**: Store Helm charts in OCI format
+- **GKE**: Deploy Helm charts to Kubernetes cluster
+- No additional GCP services required for basic Helm usage
+
+**IAM Roles Required:**
+- `roles/artifactregistry.writer`: Push charts to Artifact Registry
+- `roles/container.developer`: Deploy to GKE
+- Typically granted during 00-prereqs setup
+
+**Kubernetes Resources:**
+- **Namespace**: Any namespace (default, production, etc.)
+- **Resources Created**: Depends on chart (Deployment, Service, ConfigMap, Secret, Ingress, etc.)
+
+**Repository Locations:**
+- `01-helm-basics/chart-skeleton/`: Basic chart structure examples
+- `01-helm-basics/templating-fundamentals/`: Template syntax examples
+- `01-helm-basics/dependencies/`: Subchart examples
+- `01-helm-basics/packaging-and-oci/`: OCI publishing examples
+- `01-helm-basics/testing-and-lint/`: Validation examples
+
+**Key Helm Concepts:**
+```
+Chart: Collection of files describing Kubernetes resources
+Release: Instance of a chart running in a cluster
+Repository: Place where charts are stored (HTTP or OCI)
+Values: Configuration parameters for a chart
+Templates: Kubernetes manifests with Go template syntax
+```
+
+**Where Costs Accrue:**
+- **Artifact Registry**: $0.10/GB/month storage (minimal for Helm charts)
+- **GKE**: Cost of running pods (covered in 00-prereqs)
+- Helm itself is free and open-source
+
+## How
+
+### Quickstart: Create and Deploy Your First Chart
+
+```bash
+# 1. Create a new chart
+helm create my-app
+
+# 2. View the structure
+tree my-app/
+# Shows: Chart.yaml, values.yaml, templates/, charts/, .helmignore
+
+# 3. Lint the chart (validate syntax)
+helm lint my-app/
+# Should show: 1 chart(s) linted, 0 chart(s) failed
+
+# 4. Render templates locally (dry-run)
+helm template my-release my-app/
+# Shows rendered Kubernetes manifests
+
+# 5. Install the chart
+helm install my-release my-app/ --namespace default
+
+# 6. Check release status
+helm status my-release
+kubectl get pods -l app.kubernetes.io/instance=my-release
+
+# 7. Customize with values
+helm upgrade my-release my-app/ \
+  --set replicaCount=3 \
+  --set image.tag=1.0.0
+
+# 8. View release history
+helm history my-release
+
+# 9. Rollback if needed
+helm rollback my-release 1
+
+# 10. Uninstall
+helm uninstall my-release
+```
+
+### Verify
+
+```bash
+# Check Helm version
+helm version
+# Should show version 3.x
+
+# List installed releases
+helm list --all-namespaces
+
+# Check chart syntax
+helm lint my-app/
+
+# Render templates without installing
+helm template test my-app/ --debug
+
+# Show default values
+helm show values my-app/
+
+# Show chart metadata
+helm show chart my-app/
+
+# Show all chart information
+helm show all my-app/
+```
+
+### Cleanup
+
+```bash
+# Uninstall release
+helm uninstall my-release
+
+# Verify pods deleted
+kubectl get pods -l app.kubernetes.io/instance=my-release
+# Should show: No resources found
+
+# Delete chart directory (if testing)
+rm -rf my-app/
+```
 
 ## What is Helm?
 
