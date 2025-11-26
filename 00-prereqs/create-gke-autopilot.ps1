@@ -60,7 +60,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ""
-Write-Host "✓ Cluster created successfully!" -ForegroundColor Green
+Write-Host "[SUCCESS] Cluster created successfully!" -ForegroundColor Green
 
 # Get cluster credentials
 Write-Host ""
@@ -75,7 +75,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "✓ Credentials configured" -ForegroundColor Green
+Write-Host "[SUCCESS] Credentials configured" -ForegroundColor Green
 
 # Verify connection
 Write-Host ""
@@ -96,7 +96,7 @@ kubectl get nodes
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "GKE Cluster Setup Complete! ✓" -ForegroundColor Green
+Write-Host "GKE Cluster Setup Complete!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Yellow

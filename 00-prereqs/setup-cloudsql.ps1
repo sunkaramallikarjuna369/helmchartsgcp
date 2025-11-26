@@ -65,7 +65,7 @@ if ($LASTEXITCODE -ne 0) {
         exit 1
     }
 } else {
-    Write-Host "✓ Instance created successfully!" -ForegroundColor Green
+    Write-Host "[SUCCESS] Instance created successfully!" -ForegroundColor Green
 }
 
 # Create database
@@ -84,7 +84,7 @@ if ($LASTEXITCODE -ne 0) {
         Write-Host $result -ForegroundColor Yellow
     }
 } else {
-    Write-Host "✓ Database created" -ForegroundColor Green
+    Write-Host "[SUCCESS] Database created" -ForegroundColor Green
 }
 
 # Create database user
@@ -104,7 +104,7 @@ if ($LASTEXITCODE -ne 0) {
         Write-Host $result -ForegroundColor Yellow
     }
 } else {
-    Write-Host "✓ User created" -ForegroundColor Green
+    Write-Host "[SUCCESS] User created" -ForegroundColor Green
 }
 
 # Get connection name
@@ -122,7 +122,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Cloud SQL Setup Complete! ✓" -ForegroundColor Green
+Write-Host "Cloud SQL Setup Complete!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Connection Details:" -ForegroundColor Yellow

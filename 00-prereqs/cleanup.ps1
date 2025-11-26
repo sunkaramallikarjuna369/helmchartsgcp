@@ -54,9 +54,9 @@ if ($LASTEXITCODE -eq 0 -and $releases) {
         Write-Host "  Uninstalling $release..." -ForegroundColor Yellow
         helm uninstall $release
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "    ✓ Uninstalled" -ForegroundColor Green
+            Write-Host "    [OK] Uninstalled" -ForegroundColor Green
         } else {
-            Write-Host "    ✗ Failed" -ForegroundColor Red
+            Write-Host "    [FAILED] Failed" -ForegroundColor Red
         }
     }
 } else {
@@ -72,12 +72,12 @@ $result = gcloud sql instances delete $INSTANCE_NAME `
     --quiet 2>&1
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "  ✓ Cloud SQL instance deleted" -ForegroundColor Green
+    Write-Host "  [OK] Cloud SQL instance deleted" -ForegroundColor Green
 } else {
     if ($result -like "*not found*") {
         Write-Host "  Instance not found, skipping..." -ForegroundColor Yellow
     } else {
-        Write-Host "  ✗ Failed to delete instance" -ForegroundColor Red
+        Write-Host "  [FAILED] Failed to delete instance" -ForegroundColor Red
         Write-Host "  Error: $result" -ForegroundColor Red
     }
 }
@@ -93,12 +93,12 @@ $result = gcloud container clusters delete $CLUSTER_NAME `
     --quiet 2>&1
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "  ✓ GKE cluster deleted" -ForegroundColor Green
+    Write-Host "  [OK] GKE cluster deleted" -ForegroundColor Green
 } else {
     if ($result -like "*not found*") {
         Write-Host "  Cluster not found, skipping..." -ForegroundColor Yellow
     } else {
-        Write-Host "  ✗ Failed to delete cluster" -ForegroundColor Red
+        Write-Host "  [FAILED] Failed to delete cluster" -ForegroundColor Red
         Write-Host "  Error: $result" -ForegroundColor Red
     }
 }
@@ -113,12 +113,12 @@ $result = gcloud artifacts repositories delete $REPO_NAME `
     --quiet 2>&1
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "  ✓ Artifact Registry deleted" -ForegroundColor Green
+    Write-Host "  [OK] Artifact Registry deleted" -ForegroundColor Green
 } else {
     if ($result -like "*not found*") {
         Write-Host "  Repository not found, skipping..." -ForegroundColor Yellow
     } else {
-        Write-Host "  ✗ Failed to delete repository" -ForegroundColor Red
+        Write-Host "  [FAILED] Failed to delete repository" -ForegroundColor Red
         Write-Host "  Error: $result" -ForegroundColor Red
     }
 }
@@ -132,12 +132,12 @@ $result = gcloud iam service-accounts delete "$GSA_NAME@$env:PROJECT_ID.iam.gser
     --quiet 2>&1
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "  ✓ Service account deleted" -ForegroundColor Green
+    Write-Host "  [OK] Service account deleted" -ForegroundColor Green
 } else {
     if ($result -like "*not found*") {
         Write-Host "  Service account not found, skipping..." -ForegroundColor Yellow
     } else {
-        Write-Host "  ✗ Failed to delete service account" -ForegroundColor Red
+        Write-Host "  [FAILED] Failed to delete service account" -ForegroundColor Red
         Write-Host "  Error: $result" -ForegroundColor Red
     }
 }

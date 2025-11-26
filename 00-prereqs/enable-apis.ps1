@@ -38,10 +38,10 @@ foreach ($api in $apis) {
     $result = gcloud services enable $api --project=$env:PROJECT_ID 2>&1
     
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "  ✓ Enabled successfully" -ForegroundColor Green
+        Write-Host "  [OK] Enabled successfully" -ForegroundColor Green
         $successCount++
     } else {
-        Write-Host "  ✗ Failed to enable" -ForegroundColor Red
+        Write-Host "  [FAILED] Failed to enable" -ForegroundColor Red
         Write-Host "  Error: $result" -ForegroundColor Red
         $failCount++
     }
@@ -54,7 +54,7 @@ Write-Host "  Failed: $failCount APIs" -ForegroundColor $(if ($failCount -gt 0) 
 
 if ($failCount -eq 0) {
     Write-Host ""
-    Write-Host "All APIs enabled successfully! ✓" -ForegroundColor Green
+    Write-Host "All APIs enabled successfully!" -ForegroundColor Green
     Write-Host "You can now proceed to create your GKE cluster." -ForegroundColor Yellow
 } else {
     Write-Host ""

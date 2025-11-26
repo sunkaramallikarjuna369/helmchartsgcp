@@ -38,7 +38,7 @@ if ($LASTEXITCODE -ne 0) {
         exit 1
     }
 } else {
-    Write-Host "  ✓ Service account created" -ForegroundColor Green
+    Write-Host "  [SUCCESS] Service account created" -ForegroundColor Green
 }
 
 # Grant necessary permissions
@@ -65,10 +65,10 @@ foreach ($role in $roles) {
         --condition=None 2>&1
     
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "    ✓ Granted" -ForegroundColor Green
+        Write-Host "    [OK] Granted" -ForegroundColor Green
         $successCount++
     } else {
-        Write-Host "    ✗ Failed" -ForegroundColor Red
+        Write-Host "    [FAILED] Failed" -ForegroundColor Red
         $failCount++
     }
 }
@@ -94,7 +94,7 @@ if ($LASTEXITCODE -ne 0) {
         exit 1
     }
 } else {
-    Write-Host "  ✓ Kubernetes service account created" -ForegroundColor Green
+    Write-Host "  [SUCCESS] Kubernetes service account created" -ForegroundColor Green
 }
 
 # Bind GCP SA to K8s SA
@@ -113,7 +113,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "  ✓ Service accounts bound" -ForegroundColor Green
+Write-Host "  [SUCCESS] Service accounts bound" -ForegroundColor Green
 
 # Annotate K8s service account
 Write-Host ""
@@ -131,11 +131,11 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "  ✓ Service account annotated" -ForegroundColor Green
+Write-Host "  [SUCCESS] Service account annotated" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Workload Identity Setup Complete! ✓" -ForegroundColor Green
+Write-Host "Workload Identity Setup Complete!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Your pods can now access GCP services securely!" -ForegroundColor White

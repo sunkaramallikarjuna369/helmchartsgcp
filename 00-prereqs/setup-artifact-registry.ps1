@@ -42,7 +42,7 @@ if ($LASTEXITCODE -ne 0) {
         exit 1
     }
 } else {
-    Write-Host "✓ Repository created successfully!" -ForegroundColor Green
+    Write-Host "[SUCCESS] Repository created successfully!" -ForegroundColor Green
 }
 
 # Configure Docker authentication
@@ -56,11 +56,11 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "✓ Docker authentication configured" -ForegroundColor Green
+Write-Host "[SUCCESS] Docker authentication configured" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Artifact Registry Setup Complete! ✓" -ForegroundColor Green
+Write-Host "Artifact Registry Setup Complete!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Repository URL:" -ForegroundColor Yellow
