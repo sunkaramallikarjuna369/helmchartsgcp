@@ -8,11 +8,106 @@ Complete step-by-step guide to deploy Helm charts on GCP from Windows using Powe
 
 - Windows 10/11
 - Administrator access (for some installations)
-- GCP account with free trial credits ($300 for 90 days)
+- GCP account (create at https://console.cloud.google.com)
+- Credit card or bank account (for billing verification - no charges during free trial)
 
 ---
 
 ## Step-by-Step Instructions
+
+### Step 0: Set Up GCP Account and Billing (10 minutes)
+
+**IMPORTANT:** You must set up billing to use GCP services, even with the free trial. Google provides $300 in free credits for 90 days, and you won't be charged during the trial period.
+
+#### 0.1 Create GCP Account
+
+1. Go to https://console.cloud.google.com
+2. Click **"Get started for free"** or **"Try for free"**
+3. Sign in with your Google account (or create one)
+4. Accept the Terms of Service
+
+#### 0.2 Set Up Billing Account
+
+1. **Verify Your Identity:**
+   - Select your **Country**
+   - Check the box to agree to Terms of Service
+   - Click **"Continue"**
+
+2. **Enter Payment Information:**
+   - **Account type:** Individual or Business
+   - **Name and Address:** Enter your billing information
+   - **Payment method:** Enter credit card or bank account details
+   
+   **Note:** This is for identity verification only. You will NOT be charged during the 90-day free trial ($300 credits). After the trial, you must manually upgrade to a paid account to be charged.
+
+3. **Complete Setup:**
+   - Click **"Start my free trial"**
+   - Wait for confirmation (usually instant)
+   - You should see: "You have $300 in free credits for 90 days"
+
+#### 0.3 Create a GCP Project
+
+1. In the GCP Console, click the **project dropdown** (top left, next to "Google Cloud")
+2. Click **"New Project"**
+3. Enter project details:
+   - **Project name:** e.g., "helm-demo-project"
+   - **Project ID:** Will be auto-generated (you can customize it)
+   - **Organization:** Leave as "No organization" (unless you have one)
+4. Click **"Create"**
+5. Wait for project creation (takes a few seconds)
+6. **Copy your Project ID** - you'll need this later
+
+#### 0.4 Link Billing Account to Project (via Console)
+
+**Option A: Using GCP Console (Easiest for Windows)**
+
+1. Go to **Billing** in the GCP Console:
+   - Click the hamburger menu (☰) in the top left
+   - Scroll down to **"Billing"**
+   - Click **"Account management"**
+
+2. **Link Project to Billing:**
+   - Click **"My Projects"** tab
+   - Find your project in the list
+   - If it shows "Billing account: None", click the **three dots (⋮)** on the right
+   - Click **"Change billing account"**
+   - Select your billing account from the dropdown
+   - Click **"Set account"**
+
+3. **Verify Billing is Enabled:**
+   - Your project should now show the billing account name
+   - Status should be "Active"
+
+**Option B: Using PowerShell (After installing gcloud)**
+
+If you prefer command line (after completing Step 1):
+
+```powershell
+# List your billing accounts
+gcloud billing accounts list
+
+# Copy the ACCOUNT_ID from the output (format: 0X0X0X-0X0X0X-0X0X0X)
+
+# Link billing to your project
+gcloud billing projects link YOUR-PROJECT-ID --billing-account=ACCOUNT_ID
+```
+
+#### 0.5 Verify Billing Setup
+
+1. Go to **Billing** → **Account management** in GCP Console
+2. Click on your billing account name
+3. You should see:
+   - **Free trial status:** "$XXX remaining of $300 credit"
+   - **Projects:** Your project should be listed
+   - **Billing enabled:** Yes
+
+**Troubleshooting:**
+
+- **"Payment method declined":** Contact your bank to authorize international transactions
+- **"Unable to verify identity":** Try a different payment method or contact Google Cloud support
+- **"Billing not enabled":** Make sure you completed the free trial signup and linked billing to your project
+
+---
 
 ### Step 1: Install Required Tools (15 minutes)
 
@@ -101,8 +196,8 @@ Follow the prompts to:
 ### Step 3: Set Environment Variables (2 minutes)
 
 ```powershell
-# Set your project ID (change this to your actual project ID)
-$env:PROJECT_ID = "my-helm-gcp-project"
+# Set your project ID (use the Project ID you created in Step 0)
+$env:PROJECT_ID = "your-project-id-here"
 $env:REGION = "us-central1"
 $env:ZONE = "us-central1-a"
 
@@ -112,14 +207,13 @@ gcloud config set compute/region $env:REGION
 gcloud config set compute/zone $env:ZONE
 ```
 
-**Link billing account (required for free trial):**
+**Verify billing is linked:**
 ```powershell
-# List billing accounts
-gcloud billing accounts list
-
-# Copy the ACCOUNT_ID from the output above and run:
-gcloud billing projects link $env:PROJECT_ID --billing-account=ACCOUNT_ID
+# Check if billing is enabled for your project
+gcloud billing projects describe $env:PROJECT_ID
 ```
+
+You should see `billingEnabled: true` in the output. If not, go back to Step 0.4 to link billing.
 
 ---
 
