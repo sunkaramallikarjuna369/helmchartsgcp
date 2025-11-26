@@ -1,21 +1,33 @@
 # Set up Artifact Registry for Helm Charts and Container Images
 # Run this script from PowerShell on Windows
+#
+# This script creates a Google Artifact Registry repository for storing Docker images
+# and Helm charts. Artifact Registry is GCP's service for managing container images
+# and other artifacts in a secure, private registry.
 
-# Check if required environment variables are set
+# ============================================================================
+# STEP 1: Validate Environment Variables
+# ============================================================================
+# Check if PROJECT_ID environment variable is set
 if (-not $env:PROJECT_ID) {
     Write-Host "ERROR: PROJECT_ID environment variable is not set!" -ForegroundColor Red
     Write-Host "Please set it with: `$env:PROJECT_ID = 'your-project-id'" -ForegroundColor Yellow
     exit 1
 }
 
+# Check if REGION is set, use default if not
 if (-not $env:REGION) {
     Write-Host "WARNING: REGION not set, using default: us-central1" -ForegroundColor Yellow
     $env:REGION = "us-central1"
 }
 
-$REPO_NAME = "helm-charts"
-$REGION = $env:REGION
+# Define repository configuration
+$REPO_NAME = "helm-charts"  # Name of the Artifact Registry repository
+$REGION = $env:REGION       # GCP region for the repository
 
+# ============================================================================
+# STEP 2: Display Configuration
+# ============================================================================
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Artifact Registry Setup" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
@@ -24,15 +36,28 @@ Write-Host "Repository Name: $REPO_NAME" -ForegroundColor Yellow
 Write-Host "Region: $REGION" -ForegroundColor Yellow
 Write-Host ""
 
+# ============================================================================
+# STEP 3: Create Artifact Registry Repository
+# ============================================================================
 Write-Host "Creating Artifact Registry repository..." -ForegroundColor Green
 
+# Command: gcloud artifacts repositories create
+# Purpose: Creates a new Artifact Registry repository for storing container images
+# Parameters:
+#   $REPO_NAME - Name of the repository to create
+#   --repository-format=docker - Format for Docker/OCI container images
+#   --location - GCP region where repository will be created
+#   --description - Human-readable description of the repository
+#   --project - GCP project ID
 $result = gcloud artifacts repositories create $REPO_NAME `
     --repository-format=docker `
     --location=$REGION `
     --description="Helm charts and container images" `
     --project=$env:PROJECT_ID 2>&1
 
+# Check if repository creation succeeded
 if ($LASTEXITCODE -ne 0) {
+    # If repository already exists, that's okay - continue
     if ($result -like "*already exists*") {
         Write-Host "Repository already exists, continuing..." -ForegroundColor Yellow
     } else {
@@ -45,10 +70,19 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "[SUCCESS] Repository created successfully!" -ForegroundColor Green
 }
 
-# Configure Docker authentication
+# ============================================================================
+# STEP 4: Configure Docker Authentication
+# ============================================================================
 Write-Host ""
 Write-Host "Configuring Docker authentication..." -ForegroundColor Yellow
 
+# Command: gcloud auth configure-docker
+# Purpose: Configures Docker to authenticate with Artifact Registry
+# Parameters:
+#   "$REGION-docker.pkg.dev" - The Artifact Registry hostname for your region
+#   --quiet - Suppress confirmation prompts
+# Result: Updates Docker's config.json to use gcloud as credential helper
+#         This allows 'docker push' and 'docker pull' to work with Artifact Registry
 gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
 
 if ($LASTEXITCODE -ne 0) {
@@ -58,6 +92,9 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "[SUCCESS] Docker authentication configured" -ForegroundColor Green
 
+# ============================================================================
+# STEP 5: Display Repository Information
+# ============================================================================
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Artifact Registry Setup Complete!" -ForegroundColor Green

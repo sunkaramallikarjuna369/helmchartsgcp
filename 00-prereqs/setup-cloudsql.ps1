@@ -1,23 +1,35 @@
 # Set up Cloud SQL (Managed PostgreSQL)
 # Run this script from PowerShell on Windows
+#
+# This script creates a Cloud SQL instance with PostgreSQL database.
+# Cloud SQL is Google's fully managed relational database service.
+# OPTIONAL: This script is optional - only run if you need a managed database.
 
-# Check if required environment variables are set
+# ============================================================================
+# STEP 1: Validate Environment Variables
+# ============================================================================
+# Check if PROJECT_ID environment variable is set
 if (-not $env:PROJECT_ID) {
     Write-Host "ERROR: PROJECT_ID environment variable is not set!" -ForegroundColor Red
     Write-Host "Please set it with: `$env:PROJECT_ID = 'your-project-id'" -ForegroundColor Yellow
     exit 1
 }
 
+# Check if REGION is set, use default if not
 if (-not $env:REGION) {
     Write-Host "WARNING: REGION not set, using default: us-central1" -ForegroundColor Yellow
     $env:REGION = "us-central1"
 }
 
-$INSTANCE_NAME = "helm-demo-postgres"
-$DB_NAME = "mydb"
-$DB_USER = "myuser"
-$DB_PASSWORD = "MySecurePassword123!"
+# Define Cloud SQL configuration
+$INSTANCE_NAME = "helm-demo-postgres"     # Name of the Cloud SQL instance
+$DB_NAME = "mydb"                         # Name of the database to create
+$DB_USER = "myuser"                       # Database user name
+$DB_PASSWORD = "MySecurePassword123!"     # Database password (change this!)
 
+# ============================================================================
+# STEP 2: Display Configuration and Get Confirmation
+# ============================================================================
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Cloud SQL Setup" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
@@ -36,16 +48,32 @@ Write-Host "Estimated cost: ~`$7/month (stop when not in use to save)" -Foregrou
 Write-Host "Estimated time: 5-10 minutes" -ForegroundColor Yellow
 Write-Host ""
 
+# Ask for user confirmation before proceeding
 $confirmation = Read-Host "Do you want to proceed? (yes/no)"
 if ($confirmation -ne "yes") {
     Write-Host "Cloud SQL setup cancelled." -ForegroundColor Yellow
     exit 0
 }
 
+# ============================================================================
+# STEP 3: Create Cloud SQL Instance
+# ============================================================================
 Write-Host ""
 Write-Host "Creating Cloud SQL instance..." -ForegroundColor Green
 Write-Host "This will take 5-10 minutes..." -ForegroundColor Yellow
 
+# Command: gcloud sql instances create
+# Purpose: Creates a new Cloud SQL instance (managed PostgreSQL database)
+# Parameters:
+#   $INSTANCE_NAME - Name of the Cloud SQL instance
+#   --database-version - PostgreSQL version (15 is latest stable)
+#   --tier - Machine type (db-f1-micro is smallest, free tier eligible)
+#   --region - GCP region where instance will be created
+#   --root-password - Password for the postgres superuser
+#   --storage-type - SSD for better performance
+#   --storage-size - 10GB is minimum for Cloud SQL
+#   --project - GCP project ID
+# Note: This takes 5-10 minutes to provision
 $result = gcloud sql instances create $INSTANCE_NAME `
     --database-version=POSTGRES_15 `
     --tier=db-f1-micro `
@@ -55,6 +83,7 @@ $result = gcloud sql instances create $INSTANCE_NAME `
     --storage-size=10GB `
     --project=$env:PROJECT_ID 2>&1
 
+# Check if instance creation succeeded
 if ($LASTEXITCODE -ne 0) {
     if ($result -like "*already exists*") {
         Write-Host "Instance already exists, continuing..." -ForegroundColor Yellow
@@ -68,10 +97,18 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "[SUCCESS] Instance created successfully!" -ForegroundColor Green
 }
 
-# Create database
+# ============================================================================
+# STEP 4: Create Database
+# ============================================================================
 Write-Host ""
 Write-Host "Creating database..." -ForegroundColor Yellow
 
+# Command: gcloud sql databases create
+# Purpose: Creates a new database within the Cloud SQL instance
+# Parameters:
+#   $DB_NAME - Name of the database to create
+#   --instance - Cloud SQL instance name where database will be created
+#   --project - GCP project ID
 $result = gcloud sql databases create $DB_NAME `
     --instance=$INSTANCE_NAME `
     --project=$env:PROJECT_ID 2>&1
@@ -87,10 +124,20 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "[SUCCESS] Database created" -ForegroundColor Green
 }
 
-# Create database user
+# ============================================================================
+# STEP 5: Create Database User
+# ============================================================================
 Write-Host ""
 Write-Host "Creating database user..." -ForegroundColor Yellow
 
+# Command: gcloud sql users create
+# Purpose: Creates a new user account for accessing the database
+# Parameters:
+#   $DB_USER - Username for the new database user
+#   --instance - Cloud SQL instance name
+#   --password - Password for the user
+#   --project - GCP project ID
+# Note: This user can be used by applications to connect to the database
 $result = gcloud sql users create $DB_USER `
     --instance=$INSTANCE_NAME `
     --password=$DB_PASSWORD `
@@ -107,10 +154,20 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "[SUCCESS] User created" -ForegroundColor Green
 }
 
-# Get connection name
+# ============================================================================
+# STEP 6: Get Connection Information
+# ============================================================================
 Write-Host ""
 Write-Host "Getting connection details..." -ForegroundColor Yellow
 
+# Command: gcloud sql instances describe
+# Purpose: Retrieves detailed information about the Cloud SQL instance
+# Parameters:
+#   $INSTANCE_NAME - Name of the instance to describe
+#   --format - Output format (value(connectionName) extracts just the connection name)
+#   --project - GCP project ID
+# Result: Returns the connection name in format: project:region:instance
+#         This is used by Cloud SQL Proxy to connect to the database
 $CONNECTION_NAME = gcloud sql instances describe $INSTANCE_NAME `
     --format="value(connectionName)" `
     --project=$env:PROJECT_ID
